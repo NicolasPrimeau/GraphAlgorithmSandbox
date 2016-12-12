@@ -6,10 +6,7 @@ import csi5308.assignment3.simulation.algorithms.AlgorithmicController;
 import csi5308.assignment3.simulation.algorithms.YoYo.NodeController;
 import csi5308.assignment3.simulation.topologies.GraphGenerator;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -20,10 +17,11 @@ public class Simulator {
     private static final long START_TIME = 0;
     private static final int NUM_NODES = 16;
     private static final int sampleSize = 2;
+    private static final Random numGenerator = new Random();
     private static final List<Supplier<Graph>> SUPPLIERS = topologies();
+    private static final Supplier<Long> messageLatency = () -> (long)numGenerator.nextInt(4) + 1;
 
     private static List<Supplier<Graph>> topologies() {
-        Random numGenerator = new Random();
         List<Supplier<Graph>> list = new LinkedList<>();
         // list.add(() -> GraphGenerator.generateCompleteGraph(NUM_NODES));
         // list.add(() -> GraphGenerator.generateRingGraph(NUM_NODES));
@@ -46,7 +44,7 @@ public class Simulator {
                 Graph g = gSupplier.get();
                 System.out.println(g.toString());
                 TimeController controller = new TimeController(START_TIME, CLOCK_TICKS);
-                Mailman mailman = new Mailman(g);
+                Mailman mailman = new Mailman(g, messageLatency);
                 long distributed = 0;
                 List<AlgorithmicController> controllers = g.getNodes().stream()
                         .map(NodeController::new)
@@ -55,10 +53,17 @@ public class Simulator {
                 List<SimulationEvent> events = controllers.stream()
                         .map(c -> new SimulationEvent(new Time(START_TIME), c))
                         .collect(Collectors.toList());
+                List<MessageEvent> messageQueue = new LinkedList<>();
 
                 for (Time t : controller) {
 
                     System.out.println("\n--------------------- Time " + t.getTime() + "---------------------");
+
+                    messageQueue.stream()
+                            .filter(m -> m.getTime().equals(t))
+                            .map(MessageEvent::getMessage)
+                            .forEach(m -> m.getDirection().getArrival().getMailbox().depositMail(m));
+
                     List<SimulationEvent> toProcess = events.stream()
                             .filter(e -> e.getTimeOfEvent().equals(t))
                             .collect(Collectors.toList());
@@ -69,7 +74,9 @@ public class Simulator {
                     StringJoiner joiner = new StringJoiner(" ~ ");
                     controllers.stream().map(AlgorithmicController::reducedString).forEach(joiner::add);
                     System.out.println(joiner.toString());
-                    distributed += mailman.distributeMail();
+                    Collection<MessageEvent> newMessages = mailman.distributeMail(t);
+                    distributed += newMessages.size();
+                    messageQueue.addAll(newMessages);
 
                     if (controllers.stream().allMatch(AlgorithmicController::done)) {
                         time.add(t.getTime());
