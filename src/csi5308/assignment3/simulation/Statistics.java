@@ -39,6 +39,7 @@ public class Statistics {
                 + "StdDev: " + this.getStdDev() + "\n"
                 + "Minimum: " + this.stats.getMin() + "\n"
                 + "Maximum: " + this.stats.getMax() + "\n"
-                + "Raw: " + this.stats.getSum();
+                + "Raw: " + this.stats.getSum() +"\n"
+                + this.stats.getAverage() + "\n" + this.getStdDev() + "\n" + this.stats.getMin() + "\n" + this.stats.getMax();
     }
 }

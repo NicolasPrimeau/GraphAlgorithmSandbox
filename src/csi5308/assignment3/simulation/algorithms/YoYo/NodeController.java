@@ -23,10 +23,6 @@ public class NodeController implements AlgorithmicController {
         state = NodeState.DAG_SENDING;
     }
 
-    public Node getNode() {
-        return this.node;
-    }
-
     @Override
     public Collection<SimulationEvent> step(Time t) {
         switch(state) {
@@ -62,12 +58,15 @@ public class NodeController implements AlgorithmicController {
     }
 
     private NodeState setupEdges () {
-        node.getMailbox().getUnreadMessages().stream()
-                .filter(message -> message.getType().equals(MessageType.ID))
-                .map(m -> (Integer.valueOf(m.getMessage()) > node.getId() ? m.getDirection().reverse() : m.getDirection()))
-                .forEach(this.dagEdges::add);
-
-        node.getMailbox().deleteAllMessages();
+        node.getMailbox().getAllMessages().stream()
+                .filter(m -> m.getType() == MessageType.ID)
+                .forEach(m -> {
+                    DirectedEdge e = (Integer.valueOf(m.getMessage()) > node.getId() ? m.getDirection().reverse() : m.getDirection());
+                    if (!this.dagEdges.contains(e)) {
+                        node.getMailbox().removeMessage(m);
+                        this.dagEdges.add(e);
+                    }
+                });
 
         if (this.dagEdges.size() == this.node.getAllEdges().size()) {
             subController = new NodeSubController(this.node, this.dagEdges);

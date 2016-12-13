@@ -49,7 +49,7 @@ class NodeSubController {
         }
     }
 
-    public NodeState getState() {
+    NodeState getState() {
         return this.state;
     }
 
@@ -87,7 +87,9 @@ class NodeSubController {
             iState = State.TOCK;
 
         } else {
-            this.buffer.addAll(this.node.getMailbox().getUnreadMessages(MessageType.ANSWER, MessageType.PRUNE));
+            this.buffer.addAll(this.node.getMailbox().getAllMessages().stream()
+                    .filter(m -> m.getType() == MessageType.ANSWER || m.getType() == MessageType.PRUNE)
+                    .map(m -> node.getMailbox().removeMessage(m)).collect(Collectors.toList()));
 
             if (this.buffer.size() == this.edges.size()) {
                 processAnswers();
@@ -99,8 +101,9 @@ class NodeSubController {
     private void internalNode() {
         if (iState == State.TICK) {
             int inbound = (int)this.edges.stream().filter(e -> e.getArrival().equals(this.node)).count();
-            this.buffer.addAll(this.node.getMailbox().getUnreadMessages(MessageType.ID));
-
+            this.buffer.addAll(this.node.getMailbox().getAllMessages().stream()
+                    .filter(m -> m.getType() == MessageType.ID)
+                    .map(m -> node.getMailbox().removeMessage(m)).collect(Collectors.toList()));
             if (this.buffer.size() == inbound) {
 
                 int smallest = this.buffer.stream()
@@ -116,7 +119,9 @@ class NodeSubController {
                 iState = State.TOCK;
             }
         } else {
-            this.buffer.addAll(this.node.getMailbox().getUnreadMessages(MessageType.ANSWER, MessageType.PRUNE));
+            this.buffer.addAll(this.node.getMailbox().getAllMessages().stream()
+                    .filter(m -> m.getType() == MessageType.ANSWER || m.getType() == MessageType.PRUNE)
+                    .map(m -> node.getMailbox().removeMessage(m)).collect(Collectors.toList()));
             if (this.buffer.size() == this.edges.size()) {
                 generateAnswers();
                 processAnswers();
@@ -126,7 +131,9 @@ class NodeSubController {
     }
 
     private void sinkNode() {
-        this.buffer.addAll(this.node.getMailbox().getUnreadMessages(MessageType.ID));
+        this.buffer.addAll(this.node.getMailbox().getAllMessages().stream()
+                .filter(m -> m.getType() == MessageType.ID)
+                .map(m -> node.getMailbox().removeMessage(m)).collect(Collectors.toList()));
 
         if (this.buffer.size() == this.edges.size()) {
             generateAnswers();
